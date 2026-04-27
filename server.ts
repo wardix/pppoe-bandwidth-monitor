@@ -195,7 +195,7 @@ app.get('/', (c) =>
 
 // Inisialisasi
 updateMetrics()
-setInterval(updateMetrics, 5 * 60 * 1000)
+setInterval(updateMetrics, FETCH_INTERVAL_MINUTES * 60 * 1000)
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000
 

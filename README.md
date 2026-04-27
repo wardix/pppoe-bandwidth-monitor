@@ -37,6 +37,7 @@ Jika ada pelanggan yang mendapatkan limit internet di MikroTik yang tidak sesuai
 
 ### Environment Variables (`.env`)
 - `PORT`: Port di mana web service akan berjalan (Default: `3000`).
+- `FETCH_INTERVAL_MINUTES`: Interval sinkronisasi data dari MikroTik ke Gateway dalam menit (Default: `5`).
 - `TOLERANCE_PERCENTAGE`: Ambang batas perbedaan kecepatan yang dimaklumi sebelum dianggap *mismatch*. Format desimal (contoh: `0.05` untuk 5%, `0.1` untuk 10%). (Default: `0.05`).
 - `DB_GATEWAY_API_URL`: URL Endpoint untuk API pengecekan bandwidth Gateway.
 - `DB_GATEWAY_API_TOKEN`: Token otorisasi Bearer JWT.
