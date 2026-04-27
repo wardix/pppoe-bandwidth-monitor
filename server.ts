@@ -14,6 +14,21 @@ const FETCH_INTERVAL_MINUTES = process.env.FETCH_INTERVAL_MINUTES
 let cachedMetrics = ''
 let isFetching = false
 
+// Helper function untuk memformat bps ke Kbps, Mbps, Gbps
+function formatBandwidth(bps: number): string {
+  if (bps === 0) return '0'
+  if (bps >= 1000000000) {
+    return `${Math.round(bps / 1000000000)}G`
+  }
+  if (bps >= 1000000) {
+    return `${Math.round(bps / 1000000)}M`
+  }
+  if (bps >= 1000) {
+    return `${Math.round(bps / 1000)}K`
+  }
+  return `${bps}bps`
+}
+
 // Fungsi untuk mengambil dan membandingkan data, lalu membangun metrics
 async function updateMetrics() {
   if (isFetching) return
