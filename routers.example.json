@@ -1,0 +1,16 @@
+[
+  {
+    "id": "router-utama",
+    "apiUrlPpp": "https://gift.example.com/rest/ppp/active?service=pppoe&.proplist=name,address",
+    "apiUrlQueue": "https://gift.example.com/rest/queue/simple?.proplist=target,max-limit",
+    "username": "nismonitoring",
+    "password": "<MASUKKAN_PASSWORD_MIKROTIK>"
+  },
+  {
+    "id": "router-cabang-jakarta",
+    "apiUrlPpp": "https://jkt.example.com/rest/ppp/active?service=pppoe&.proplist=name,address",
+    "apiUrlQueue": "https://jkt.example.com/rest/queue/simple?.proplist=target,max-limit",
+    "username": "admin",
+    "password": "<MASUKKAN_PASSWORD_MIKROTIK>"
+  }
+]
