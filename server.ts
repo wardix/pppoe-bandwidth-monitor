@@ -7,6 +7,9 @@ const DB_GATEWAY_API_TOKEN = process.env.DB_GATEWAY_API_TOKEN || ''
 const TOLERANCE_PERCENTAGE = process.env.TOLERANCE_PERCENTAGE
   ? parseFloat(process.env.TOLERANCE_PERCENTAGE)
   : 0.05
+const FETCH_INTERVAL_MINUTES = process.env.FETCH_INTERVAL_MINUTES
+  ? parseInt(process.env.FETCH_INTERVAL_MINUTES, 10)
+  : 5
 
 let cachedMetrics = ''
 let isFetching = false
