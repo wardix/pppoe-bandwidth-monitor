@@ -163,7 +163,18 @@ async function updateMetrics() {
         const ip = res.ip_address || 'unknown'
         const username = (res.username || 'unknown').replace(/\"/g, '\\"')
         const pkg = (res.db_package || 'unknown').replace(/\"/g, '\\"')
-        const mtLimit = (res.mt_max_limit || 'unknown').replace(/\"/g, '\\"')
+
+        let formattedMtLimit = 'unknown'
+        if (res.mt_max_limit && res.mt_max_limit.includes('/')) {
+          const [upload, download] = res.mt_max_limit.split('/')
+          formattedMtLimit = `${formatBandwidth(
+            parseInt(upload, 10),
+          )}/${formatBandwidth(parseInt(download, 10))}`
+        } else {
+          formattedMtLimit = res.mt_max_limit || 'unknown'
+        }
+        const mtLimit = formattedMtLimit.replace(/\"/g, '\\"')
+
         const routerId = (res.router_id || 'unknown').replace(/\"/g, '\\"')
 
         newMetrics += `pppoe_bandwidth_mismatch{router="${routerId}",ip="${ip}",username="${username}",package="${pkg}",mt_limit="${mtLimit}"} 1\n`
