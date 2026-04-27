@@ -196,6 +196,25 @@ app.get('/', (c) =>
   c.text('PPPoE Bandwidth Prometheus Exporter is running. Visit /metrics.'),
 )
 
+// Endpoint untuk memicu sinkronisasi manual (misalnya via webhook atau curl)
+app.post('/refresh', async (c) => {
+  if (isFetching) {
+    return c.json(
+      { success: false, message: 'Sinkronisasi sedang berjalan.' },
+      409,
+    )
+  }
+
+  // Memicu update di background, tidak ditunggu (non-blocking) agar request bisa langsung selesai
+  updateMetrics()
+
+  return c.json({
+    success: true,
+    message:
+      'Sinkronisasi manual telah dipicu. Silakan cek /metrics beberapa saat lagi.',
+  })
+})
+
 // Inisialisasi
 updateMetrics()
 setInterval(updateMetrics, FETCH_INTERVAL_MINUTES * 60 * 1000)

@@ -69,6 +69,20 @@ bun run dev
 Aplikasi akan segera berjalan (misal pada `http://localhost:3000`). Anda bisa mengecek hasil komparasinya di:
 `http://localhost:3000/metrics`
 
+## API Endpoints
+
+### `GET /metrics`
+Endpoint utama yang akan di-*scrape* oleh Prometheus. Endpoint ini mengembalikan data *cache* dari hasil sinkronisasi terakhir. Responsnya sangat cepat (instan).
+
+### `POST /refresh`
+Memaksa *web service* untuk segera memicu proses sinkronisasi ulang data di *background*. Endpoint ini akan langsung merespons tanpa menunggu proses sinkronisasi selesai.
+Gunakan endpoint ini jika Anda butuh data terbaru tanpa harus menunggu siklus *auto-refresh*.
+
+**Contoh Penggunaan:**
+```bash
+curl -X POST http://localhost:3000/refresh
+```
+
 ## Pengembangan (Development)
 Proyek ini menggunakan **Biome** untuk memastikan format dan standar kode tetap konsisten. Proyek ini juga telah terintegrasi dengan **Husky** dan **lint-staged**, sehingga kode akan di-*format* secara otomatis setiap kali Anda melakukan `git commit`.
 
