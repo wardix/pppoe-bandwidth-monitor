@@ -71,7 +71,10 @@ async function updateMetrics() {
             headers.Authorization = `Basic ${btoa(`${router.username}:${router.password}`)}`
           }
 
-          const res = await fetch(router.apiUrl, { headers })
+          const res = await fetch(router.apiUrl, {
+            headers,
+            tls: { rejectUnauthorized: false },
+          })
           if (!res.ok) {
             throw new Error(
               `Gagal mengambil sesi dari ${router.id} (HTTP ${res.status})`,
@@ -104,8 +107,14 @@ async function updateMetrics() {
           }
 
           const [pppoeRes, queueRes] = await Promise.all([
-            fetch(router.apiUrlPpp, { headers }),
-            fetch(router.apiUrlQueue, { headers }),
+            fetch(router.apiUrlPpp, {
+              headers,
+              tls: { rejectUnauthorized: false },
+            }),
+            fetch(router.apiUrlQueue, {
+              headers,
+              tls: { rejectUnauthorized: false },
+            }),
           ])
 
           if (!pppoeRes.ok)
