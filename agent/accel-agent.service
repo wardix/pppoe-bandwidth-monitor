@@ -1,0 +1,28 @@
+[Unit]
+Description=Accel-PPP HTTP Agent for Bandwidth Monitor
+After=network.target accel-ppp.service
+
+[Service]
+Type=simple
+# Sesuaikan path python dan file jika berbeda
+ExecStart=/usr/bin/python3 /opt/accel-agent.py
+
+# Konfigurasi Port (Default: 8080)
+# Environment=PORT=8080
+
+# Autentikasi Basic Auth (Direkomendasikan)
+# Environment=AUTH_USER=api_user
+# Environment=AUTH_PASS=api_password
+
+# Atau Autentikasi Bearer Token (Opsional)
+# Environment=API_TOKEN=rahasia_token_anda
+
+# Urutan rate-limit di accel-cmd (Default: down/up)
+# Environment=RATE_ORDER=down/up
+
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

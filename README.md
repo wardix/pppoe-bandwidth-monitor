@@ -1,18 +1,19 @@
 # PPPoE Bandwidth Monitor (Prometheus Exporter)
 
-Sebuah *web service* ringan yang dibangun menggunakan **Bun** dan **Hono**. Proyek ini berfungsi sebagai *Prometheus Exporter* untuk memantau dan membandingkan profil *bandwidth* pelanggan (PPPoE) secara *real-time* antara router MikroTik dan *database* Gateway terpusat.
+Sebuah *web service* ringan yang dibangun menggunakan **Bun** dan **Hono**. Proyek ini berfungsi sebagai *Prometheus Exporter* untuk memantau dan membandingkan profil *bandwidth* pelanggan (PPPoE) secara *real-time* antara router (MikroTik / Linux Accel-PPP) dan *database* Gateway terpusat.
 
-Jika ada pelanggan yang mendapatkan limit internet di MikroTik yang tidak sesuai (misalnya bocor tanpa limit atau dilimit terlalu rendah) dibandingkan dengan paket berlangganannya di *database*, eksportir ini akan mengeluarkan indikator peringatan (*alert*) yang bisa ditangkap oleh Prometheus.
+Jika ada pelanggan yang mendapatkan limit internet di router yang tidak sesuai (misalnya bocor tanpa limit atau dilimit terlalu rendah) dibandingkan dengan paket berlangganannya di *database*, eksportir ini akan mengeluarkan indikator peringatan (*alert*) yang bisa ditangkap oleh Prometheus.
 
 ## Fitur Utama
-- **Multi-Router Support:** Mampu menarik dan memeriksa data dari banyak router MikroTik sekaligus melalui *MikroTik REST API*.
+- **Multi-Platform Router Support:** Mampu menarik dan memeriksa data dari router **MikroTik** (melalui REST API bawaan RouterOS v7) dan **Linux Accel-PPP** (melalui agent HTTP mandiri).
 - **Toleransi Dinamis:** Menghitung perbedaan kecepatan (dalam *bps*) antara router dan *database*, serta mengabaikan perbedaan minor (*default* selisih < 5%) yang biasa terjadi akibat perbedaan standar konversi (1000 bps vs 1024 bps). Toleransi ini dapat dikustomisasi.
 - **Background Synchronization:** Melakukan proses pengecekan ke ribuan pelanggan secara berkala di latar belakang (setiap 5 menit), sehingga saat *endpoint* `/metrics` diakses, balasan diberikan secara instan tanpa risiko *timeout*.
 - **Metrics Prometheus:** Format metrik disesuaikan agar bersih dan efisien, di mana hanya data pelanggan yang *mismatch* (tidak sesuai) yang di- *expose*.
 
 ## Persyaratan
 - [Bun](https://bun.sh/) (versi terbaru)
-- Akses ke Router MikroTik versi 7.1 atau lebih baru (karena menggunakan fitur *REST API*).
+- Akses ke Router MikroTik versi 7.1 atau lebih baru (jika memantau MikroTik)
+- Python 3 di Linux Router Accel-PPP (jika menggunakan agen `agent/accel-agent.py`)
 
 ## Instalasi
 
@@ -31,28 +32,42 @@ Jika ada pelanggan yang mendapatkan limit internet di MikroTik yang tidak sesuai
    ```bash
    cp routers.example.json routers.json
    ```
-   Lalu masukkan detail koneksi router MikroTik Anda ke dalam file `routers.json`.
+   Lalu masukkan detail koneksi router Anda ke dalam file `routers.json`.
 
 ## Konfigurasi
 
 ### Environment Variables (`.env`)
 - `PORT`: Port di mana web service akan berjalan (Default: `3000`).
-- `FETCH_INTERVAL_MINUTES`: Interval sinkronisasi data dari MikroTik ke Gateway dalam menit (Default: `5`).
+- `FETCH_INTERVAL_MINUTES`: Interval sinkronisasi data dari router ke Gateway dalam menit (Default: `5`).
 - `TOLERANCE_PERCENTAGE`: Ambang batas perbedaan kecepatan yang dimaklumi sebelum dianggap *mismatch*. Format desimal (contoh: `0.05` untuk 5%, `0.1` untuk 10%). (Default: `0.05`).
 - `DB_GATEWAY_API_URL`: URL Endpoint untuk API pengecekan bandwidth Gateway.
 - `DB_GATEWAY_API_TOKEN`: Token otorisasi Bearer JWT.
 
 ### Daftar Router (`routers.json`)
-Setiap objek JSON di dalam *array* merepresentasikan satu buah router MikroTik:
+Daftar router mendukung router MikroTik dan router Linux Accel-PPP:
+
 ```json
-{
-  "id": "nama-unik-router",
-  "apiUrlPpp": "https://<ip-atau-domain-mikrotik>/rest/ppp/active?service=pppoe&.proplist=name,address",
-  "apiUrlQueue": "https://<ip-atau-domain-mikrotik>/rest/queue/simple?.proplist=target,max-limit",
-  "username": "user_api",
-  "password": "password_api"
-}
+[
+  {
+    "id": "mikrotik-pusat",
+    "type": "mikrotik",
+    "apiUrlPpp": "https://<ip-atau-domain-mikrotik>/rest/ppp/active?service=pppoe&.proplist=name,address",
+    "apiUrlQueue": "https://<ip-atau-domain-mikrotik>/rest/queue/simple?.proplist=target,max-limit",
+    "username": "user_api",
+    "password": "password_api"
+  },
+  {
+    "id": "linux-accel-01",
+    "type": "accel-ppp",
+    "apiUrl": "http://<ip-linux-router>:8080/sessions",
+    "username": "api_user",
+    "password": "api_password"
+  }
+]
 ```
+
+> **Catatan untuk Linux Accel-PPP:**
+> Jalankan agen HTTP ringan yang tersedia di folder `agent/accel-agent.py` pada Linux router Anda. Agen ini mengeksekusi `accel-cmd` dan menyediakan endpoint `/sessions` untuk monitor. Lihat file `agent/accel-agent.service` untuk integrasi systemd.
 
 ## Menjalankan Aplikasi
 

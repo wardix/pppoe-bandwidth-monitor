@@ -1,16 +1,17 @@
 [
   {
-    "id": "router-utama",
+    "id": "router-utama-mikrotik",
+    "type": "mikrotik",
     "apiUrlPpp": "https://gift.example.com/rest/ppp/active?service=pppoe&.proplist=name,address",
     "apiUrlQueue": "https://gift.example.com/rest/queue/simple?.proplist=target,max-limit",
     "username": "nismonitoring",
     "password": "<MASUKKAN_PASSWORD_MIKROTIK>"
   },
   {
-    "id": "router-cabang-jakarta",
-    "apiUrlPpp": "https://jkt.example.com/rest/ppp/active?service=pppoe&.proplist=name,address",
-    "apiUrlQueue": "https://jkt.example.com/rest/queue/simple?.proplist=target,max-limit",
-    "username": "admin",
-    "password": "<MASUKKAN_PASSWORD_MIKROTIK>"
+    "id": "router-linux-accel",
+    "type": "accel-ppp",
+    "apiUrl": "http://192.168.10.1:8080/sessions",
+    "username": "api_user",
+    "password": "api_password"
   }
 ]

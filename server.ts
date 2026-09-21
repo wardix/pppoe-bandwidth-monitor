@@ -48,52 +48,99 @@ async function updateMetrics() {
         `\n[${new Date().toISOString()}] Memproses router: ${router.id}`,
       )
 
-      const authHeader = `Basic ${btoa(`${router.username}:${router.password}`)}`
-      const headers = {
-        Authorization: authHeader,
-        'Content-Type': 'application/json',
-      }
-
       try {
-        // 1. Ambil data dari MikroTik
-        const [pppoeRes, queueRes] = await Promise.all([
-          fetch(router.apiUrlPpp, { headers }),
-          fetch(router.apiUrlQueue, { headers }),
-        ])
+        const sessionMap = new Map<
+          string,
+          { ip_address: string; username: string; max_limit: string }
+        >()
 
-        if (!pppoeRes.ok)
-          throw new Error(`Gagal mengambil PPPoE dari ${router.id}`)
-        if (!queueRes.ok)
-          throw new Error(`Gagal mengambil Queue dari ${router.id}`)
+        if (router.type === 'accel-ppp' || router.apiUrl) {
+          // 1. Ambil data dari Linux Router (Accel-PPP HTTP Agent)
+          if (!router.apiUrl) {
+            throw new Error(
+              `apiUrl tidak dikonfigurasi untuk router ${router.id}`,
+            )
+          }
 
-        const activePPPoE = await pppoeRes.json()
-        const simpleQueues = await queueRes.json()
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+          }
+          if (router.apiToken) {
+            headers.Authorization = `Bearer ${router.apiToken}`
+          } else if (router.username && router.password) {
+            headers.Authorization = `Basic ${btoa(`${router.username}:${router.password}`)}`
+          }
 
-        // 2. Petakan Queue ke Username
-        const limitMap = new Map<string, string>()
-        for (const queue of simpleQueues) {
-          let target = queue.target
-          const match = target.match(/<pppoe-(.*)>/)
-          if (match) target = match[1]
-          limitMap.set(target, queue['max-limit'])
-        }
+          const res = await fetch(router.apiUrl, { headers })
+          if (!res.ok) {
+            throw new Error(
+              `Gagal mengambil sesi dari ${router.id} (HTTP ${res.status})`,
+            )
+          }
 
-        // 3. Gabungkan data MikroTik (IP -> Username -> Limit)
-        const mikrotikMap = new Map()
-        for (const session of activePPPoE) {
-          if (session.address) {
-            mikrotikMap.set(session.address, {
-              ip_address: session.address,
-              username: session.name,
-              max_limit: limitMap.get(session.name) || 'Tidak ada limit',
-            })
+          const sessions: any[] = await res.json()
+          for (const session of sessions) {
+            const ip = session.ip || session.address || session.ip_address
+            if (ip) {
+              sessionMap.set(ip, {
+                ip_address: ip,
+                username: session.username || session.name || 'unknown',
+                max_limit: session.max_limit || 'Tidak ada limit',
+              })
+            }
+          }
+        } else {
+          // 1. Ambil data dari MikroTik REST API
+          if (!router.apiUrlPpp || !router.apiUrlQueue) {
+            throw new Error(
+              `apiUrlPpp atau apiUrlQueue tidak dikonfigurasi untuk router ${router.id}`,
+            )
+          }
+
+          const authHeader = `Basic ${btoa(`${router.username || ''}:${router.password || ''}`)}`
+          const headers = {
+            Authorization: authHeader,
+            'Content-Type': 'application/json',
+          }
+
+          const [pppoeRes, queueRes] = await Promise.all([
+            fetch(router.apiUrlPpp, { headers }),
+            fetch(router.apiUrlQueue, { headers }),
+          ])
+
+          if (!pppoeRes.ok)
+            throw new Error(`Gagal mengambil PPPoE dari ${router.id}`)
+          if (!queueRes.ok)
+            throw new Error(`Gagal mengambil Queue dari ${router.id}`)
+
+          const activePPPoE = await pppoeRes.json()
+          const simpleQueues = await queueRes.json()
+
+          // 2. Petakan Queue ke Username
+          const limitMap = new Map<string, string>()
+          for (const queue of simpleQueues) {
+            let target = queue.target
+            const match = target.match(/<pppoe-(.*)>/)
+            if (match) target = match[1]
+            limitMap.set(target, queue['max-limit'])
+          }
+
+          // 3. Gabungkan data MikroTik (IP -> Username -> Limit)
+          for (const session of activePPPoE) {
+            if (session.address) {
+              sessionMap.set(session.address, {
+                ip_address: session.address,
+                username: session.name,
+                max_limit: limitMap.get(session.name) || 'Tidak ada limit',
+              })
+            }
           }
         }
 
         // 4. Batch request ke DB Gateway
         const ipBatches: string[][] = []
         const BATCH_SIZE = 128
-        const allIps = Array.from(mikrotikMap.keys())
+        const allIps = Array.from(sessionMap.keys())
 
         for (let i = 0; i < allIps.length; i += BATCH_SIZE) {
           ipBatches.push(allIps.slice(i, i + BATCH_SIZE))
@@ -115,31 +162,36 @@ async function updateMetrics() {
             const apiData = await response.json()
 
             for (const apiUser of apiData) {
-              const mtUser = mikrotikMap.get(apiUser.ip)
-              if (!mtUser) continue
+              const sessionUser = sessionMap.get(apiUser.ip)
+              if (!sessionUser) continue
 
-              let mtUpload = 0
-              let mtDownload = 0
+              let routerUpload = 0
+              let routerDownload = 0
 
-              if (mtUser.max_limit && mtUser.max_limit.includes('/')) {
-                const parts = mtUser.max_limit.split('/')
-                mtUpload = parseInt(parts[0], 10)
-                mtDownload = parseInt(parts[1], 10)
+              if (
+                sessionUser.max_limit &&
+                sessionUser.max_limit.includes('/')
+              ) {
+                const parts = sessionUser.max_limit.split('/')
+                routerUpload = parseInt(parts[0], 10)
+                routerDownload = parseInt(parts[1], 10)
               }
 
-              const uploadDiff = Math.abs(mtUpload - apiUser.upload_rate)
-              const downloadDiff = Math.abs(mtDownload - apiUser.download_rate)
+              const uploadDiff = Math.abs(routerUpload - apiUser.upload_rate)
+              const downloadDiff = Math.abs(
+                routerDownload - apiUser.download_rate,
+              )
 
               let uploadTolerance =
                 apiUser.upload_rate > 0
                   ? uploadDiff / apiUser.upload_rate
-                  : mtUpload > 0
+                  : routerUpload > 0
                     ? 1
                     : 0
               let downloadTolerance =
                 apiUser.download_rate > 0
                   ? downloadDiff / apiUser.download_rate
-                  : mtDownload > 0
+                  : routerDownload > 0
                     ? 1
                     : 0
 
@@ -151,8 +203,8 @@ async function updateMetrics() {
                 allMismatches.push({
                   router_id: router.id,
                   ip_address: apiUser.ip,
-                  username: mtUser.username,
-                  mt_max_limit: mtUser.max_limit,
+                  username: sessionUser.username,
+                  mt_max_limit: sessionUser.max_limit,
                   db_package: apiUser.subscription_package,
                 })
               }

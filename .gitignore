@@ -83,3 +83,9 @@ comparison_result.json
 mismatches.json
 online_limits.json
 *.prom
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
